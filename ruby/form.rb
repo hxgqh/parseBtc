@@ -1,3 +1,3 @@
 class Form
-  # To change this template use File | Settings | File Templates.
+  # This class is written by hxgqh@126.com
 end
