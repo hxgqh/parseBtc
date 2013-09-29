@@ -1,0 +1,39 @@
+4 requests  ❘  803 B transferred  ❘  740 ms (load: 105 ms, DOMContentLoaded: 106 ms)
+Upload_Data
+39 ms4 ms
+get.js?f=/js/gwdang-notifier.js
+browser.gwdang.com
+0 ms0 ms
+vglnk.js
+cdn.viglink.com/api
+175 ms3 ms
+ping?format=jsonp&key=0dff9ade2d1125af6c910069b6d6e155&loc=http%3A%2F%2F192.168.1.253%3A8000%2FUpload_Data&v=1&ref=http%3A%2F%2F192.168.1.253%3A8000%2FUpload_Data&jsonp=vglnk_jsonp_13803683685895
+api.viglink.com/api
+312 ms4 ms
+HeadersPreviewResponseTiming
+Request URL:http://192.168.1.253:8000/Upload_Data
+Request Method:POST
+Status Code:200 OK
+Request Headersview source
+Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Encoding:gzip,deflate,sdch
+Accept-Language:zh-CN,zh;q=0.8,en-US;q=0.6,en;q=0.4
+Cache-Control:max-age=0
+Connection:keep-alive
+Content-Length:229
+Content-Type:application/x-www-form-urlencoded
+Host:192.168.1.253:8000
+Origin:http://192.168.1.253:8000
+Referer:http://192.168.1.253:8000/Upload_Data
+User-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.65 Safari/537.36
+Form Dataview sourceview URL encoded
+JMIP:192.168.1.253
+JMSK:255.255.255.0
+JGTW:192.168.1.1
+WPRT:8000
+PDNS:192.168.1.1
+SDNS:114.114.114.114
+MPRT:8332,8333
+MURL:199.180.254.117,199.180.254.117
+USPA:coco8652.1254:123,coco8652.1254:123
+update:Update/Restart
