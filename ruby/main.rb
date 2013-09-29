@@ -4,6 +4,7 @@ require 'optparse'
 require './form.rb'
 require './parser.rb'
 
+require 'CSV'
 require 'thread'
 
 
@@ -143,33 +144,37 @@ def store_result(ip_info_hash)
 
   p ip_info_hash
 
-  column_array = %w[time, total_mhs, received, accepted, per_minute, efficiency, up_time,
-                ip, mask, gateway, web_port, primary_dns, secondary_dns, ports,
-                server_addresses, userpass]
+  column_array = %w[time total_mhs received accepted per_minute efficiency up_time
+                ip mask gateway web_port primary_dns secondary_dns ports
+                server_addresses userpass]
 
   if ip_info_hash
     # @Todo:parsed result should be stored some where
     begin
       t = Time.new.strftime('%Y-%m-%d %H:%M:%S')
-      f = File.open('data.csv','a+')
 
-      # write table header
-      column_array.each do |column|
-        f.write(column)
+      CSV.open('data.csv','a+') do |data|
+        # write table header
+        p 'column_array:'
+        p column_array
+        data << column_array
+
+
+        ip_info_hash.each {
+            |ip,v1|
+          line_data = []
+          line_data.push(t)
+          column_array.each do |column|
+            if v1.has_key?column
+              line_data.push(v1[column])
+            end
+          end
+          # write table content
+          p 'line_data:'
+          p line_data
+          data << line_data
+        }
       end
-      f.write('\n')
-
-      # write table content
-      ip_info_hash.each {
-        |ip,v1|
-        column_array.each do |column|
-          #p column
-          #p v1
-          f.write(v1[column])
-        end
-        f.write('\n')
-      }
-      f.close
     rescue Exception => e
       p e.message
       p e.backtrace.inspect
@@ -348,9 +353,9 @@ def get_info_mt(ip_strategy_hash)
       }
 
       while ip
-        #res = nil
-        #url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']
-        #res = psr.get_data_uri(url)
+        res = nil
+        url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']
+        res = psr.get_data_uri(url)
         parsed_result = psr.parse_nokogiri(res)
 
         #store_result(parsed_result)
