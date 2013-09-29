@@ -141,6 +141,8 @@ end
 def store_result(ip_info_hash)
   p 'func store_result'
 
+  p ip_info_hash
+
   column_array = %w[time, total_mhs, received, accepted, per_minute, efficiency, up_time,
                 ip, mask, gateway, web_port, primary_dns, secondary_dns, ports,
                 server_addresses, userpass]
@@ -161,8 +163,8 @@ def store_result(ip_info_hash)
       ip_info_hash.each {
         |ip,v1|
         column_array.each do |column|
-          p column
-          p v1
+          #p column
+          #p v1
           f.write(v1[column])
         end
         f.write('\n')
@@ -196,12 +198,20 @@ def set_devices_mt(ip_strategy_hash)
       'server_addresses' => /%server_addresses/,
       'userpass' => /%userpass/
   }
+
+  # Test code here
+  f = File.open('../Configuration.htm','r')
+  res = f.read()
+  f.close()
+
   max_thread_num = 5
 
   psr = Parser.new()
   ip_array = ip_strategy_hash.keys
 
   i = 0
+
+  parsed_result = psr.parse_nokogiri(res)
 
   m = Mutex.new
   while i < max_thread_num
@@ -226,12 +236,43 @@ def set_devices_mt(ip_strategy_hash)
         if ip_strategy_hash[ip].has_key?'set'
           data = data_template
           set_hash = ip_strategy_hash[ip]['set']
-          set_hash.each {
-            |k,v|
-            data = data.sub(key_re_hash[k],v)
-          }
+
+          #parsed_result = psr.parse_nokogiri(res)
+
+          #p parsed_result
+          p 'set_hash:'
+          p set_hash
+          p 'parsed_result:'
+          p parsed_result
+
+          begin
+            parsed_result.each{
+              |k,v|
+
+              if !key_re_hash.has_key?k
+                #p 'key_re_hash do not have key '+k
+              end
+
+              if ((set_hash.has_key?k) && (key_re_hash.has_key?k))
+                p 1
+                data = data.sub(key_re_hash[k],set_hash[k])
+                #p data
+              elsif (!(set_hash.has_key?k) && (key_re_hash.has_key?k))
+                p 2
+                data = data.sub(key_re_hash[k],v)
+                #p data
+              end
+            }
+          rescue Exception => e
+            p e.message
+            p e.backtrace.inspect
+          end
+
+          p data
 
           data = URI.escape(data, Regexp.new("[^#{URI::PATTERN::UNRESERVED}]"))
+
+          p data
 
           url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']+'/'+'Upload_Data'
 
@@ -243,6 +284,8 @@ def set_devices_mt(ip_strategy_hash)
             ip = ip_array[0]
             ip_array.delete(ip)
           }
+
+          sleep 10.0
         end
       end
     }
@@ -368,7 +411,7 @@ if __FILE__ ==  $0
     end
   end.parse!
 
-  p ip_strategy_hash
+  #p ip_strategy_hash
 
   if set_flag
     set_devices_mt(ip_strategy_hash)
