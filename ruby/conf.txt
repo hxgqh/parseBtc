@@ -4,8 +4,12 @@
 
 #  第一个策略
 [strategy]
+# interval为采集数据的间隔，必须设定
 interval = 600
-ip_list = 192.168.1.1-3
+# port为http运行的端口号（即当前的web_port），必须设定
+port = 8000
+# ip_list为ip列表，必须设定。
+ip_list = 192.168.1.1-2
 
 [set]
 gateway = 192.168.1.1
@@ -20,7 +24,8 @@ userpass = Testminer.%A%B:123,Testminer.%A%B&":123'
 # 第二个策略
 [strategy]
 interval = 600
-ip_list = 192.168.1.2-3
+ip_list = 192.168.2.1-2
+port = 8000
 [set]
 gateway = 192.168.1.1
 web_port = 8001

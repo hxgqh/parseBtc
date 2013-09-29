@@ -42,7 +42,7 @@ class Parser
   def get_data_uri(url)
     uri = URI(url)
     res = Net::HTTP.get(uri)
-    p res
+    #p res
 
     return res
   end
@@ -111,7 +111,7 @@ class Parser
       end
     end
 
-    p @res_hash
+    #p @res_hash
 
     return @res_hash
   end

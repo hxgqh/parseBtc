@@ -4,6 +4,8 @@ require 'optparse'
 require './form.rb'
 require './parser.rb'
 
+require 'thread'
+
 
 def get_conf(file)
   p '读取策略文件'
@@ -136,21 +138,203 @@ def generate_ip_conf(strategy_hash)
 end
 
 
-def set_devices(strategy_hash)
+def store_result(ip_info_hash)
+  p 'func store_result'
+
+  column_array = %w[time, total_mhs, received, accepted, per_minute, efficiency, up_time,
+                ip, mask, gateway, web_port, primary_dns, secondary_dns, ports,
+                server_addresses, userpass]
+
+  if ip_info_hash
+    # @Todo:parsed result should be stored some where
+    begin
+      t = Time.new.strftime('%Y-%m-%d %H:%M:%S')
+      f = File.open('data.csv','a+')
+
+      # write table header
+      column_array.each do |column|
+        f.write(column)
+      end
+      f.write('\n')
+
+      # write table content
+      ip_info_hash.each {
+        |ip,v1|
+        column_array.each do |column|
+          p column
+          p v1
+          f.write(v1[column])
+        end
+        f.write('\n')
+      }
+      f.close
+    rescue Exception => e
+      p e.message
+      p e.backtrace.inspect
+    end
+  end
+end
+
+
+def set_devices_mt(ip_strategy_hash)
   p '设置设备参数'
 
+  if ! ip_strategy_hash
+    return -1
+  end
+
+  data_template = 'JMIP=%ip&JMSK=%mask&JGTW=%gateway&WPRT=%web_port&PDNS=%primary_dns&SDNS=%secondary_dns&MPRT=%ports
+                  &MURL=server_addresses&USPA=userpass&update=Update%2FRestart'
+  key_re_hash = {
+      'ip' => /%ip/,
+      'mask' => /%mask/,
+      'gateway' => /%gateway/,
+      'web_port' => /%web_port/,
+      'primary_dns' => /%primary_dns/,
+      'secondary_dns' => /%secondary_dns/,
+      'ports' => /%ports/,
+      'server_addresses' => /%server_addresses/,
+      'userpass' => /%userpass/
+  }
+  max_thread_num = 5
+
+  psr = Parser.new()
+  ip_array = ip_strategy_hash.keys
+
+  i = 0
+
+  m = Mutex.new
+  while i < max_thread_num
+    p 'thread '+String(i)
+
+    if ip_array == []
+      break
+    end
+
+    Thread.new {
+      $stdout.write 'thread '+String(i)
+
+      ip = nil
+
+      m.synchronize {
+        ip = ip_array[0]
+        ip_array.delete(ip)
+        i+=1
+      }
+
+      while ip
+        if ip_strategy_hash[ip].has_key?'set'
+          data = data_template
+          set_hash = ip_strategy_hash[ip]['set']
+          set_hash.each {
+            |k,v|
+            data = data.sub(key_re_hash[k],v)
+          }
+
+          data = URI.escape(data, Regexp.new("[^#{URI::PATTERN::UNRESERVED}]"))
+
+          url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']+'/'+'Upload_Data'
+
+          cmd = 'curl -d "'+data+'" '+'"'+url+'"'
+          #system(cmd)
+          p cmd
+
+          m.synchronize{
+            ip = ip_array[0]
+            ip_array.delete(ip)
+          }
+        end
+      end
+    }
+  end
   p '设置结束'
 end
 
-def get_info(strategy_hash)
+def get_info_mt(ip_strategy_hash)
   p '轮询设备'
+  if !ip_strategy_hash
+    p 'error: ip_strategy_hash is nil'
+    return
+  end
 
+  ip_info_hash = {}
+
+  max_thread_num = 5
+  ip_num = ip_strategy_hash.length
+
+  thread_num = max_thread_num
+  if ip_num%max_thread_num == 0
+    thread_num = ip_num/max_thread_num
+  else
+    thread_num = ip_num/max_thread_num+1
+  end
+
+  thread_per_num = ip_num/thread_num
+
+  psr = Parser.new()
+  ip_array = ip_strategy_hash.keys
+
+  # Test code here
+  f = File.open('../Configuration.htm','r')
+  res = f.read()
+  f.close()
+
+  p thread_num
+
+  i = 0
+
+  m = Mutex.new
+  while i < max_thread_num
+    p 'thread '+String(i)
+
+    if ip_array == []
+      break
+    end
+
+    Thread.new {
+      $stdout.write 'thread '+String(i)
+      #my_ip_array = ip_array.slice(i*thread_per_num,max(ip_num,i*thread_per_num))
+
+      ip = nil
+
+      m.synchronize {
+        ip = ip_array[0]
+        ip_array.delete(ip)
+        i+=1
+        #p ip_array
+      }
+
+      while ip
+        #res = nil
+        #url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']
+        #res = psr.get_data_uri(url)
+        parsed_result = psr.parse_nokogiri(res)
+
+        #store_result(parsed_result)
+
+        m.synchronize{
+          ip_info_hash[ip] = parsed_result
+          ip = ip_array[0]
+          ip_array.delete(ip)
+          #p ip_info_hash
+        }
+      end
+    }
+  end
+
+  return ip_info_hash
   p '轮询结束'
 end
 
 if __FILE__ ==  $0
   # Deal with command line options
   options = {}
+  strategy_hash = nil
+  ip_strategy_hash = nil
+
+  get_flag = false
+  set_flag = false
+
   option_parser = OptionParser.new do |opts|
     # 这里是这个命令行工具的帮助信息
     opts.banner = '命令行帮助'
@@ -158,15 +342,14 @@ if __FILE__ ==  $0
     # Option 作为switch，不带argument，用于将switch设置成true或false
     options[:switch] = false
 
-    strategy_hash = nil
-    ip_strategy_hash = nil
+
 
     # 指定配置文件
     opts.on('-c NAME', '--config Name', '策略文件') do |value|
       options[:name] = value
       strategy_hash = get_conf(value)
       ip_strategy_hash = generate_ip_conf(strategy_hash)
-      p ip_strategy_hash
+      #p ip_strategy_hash
       #p 'strategy_hash:'
       #p strategy_hash
     end
@@ -175,13 +358,26 @@ if __FILE__ ==  $0
     opts.on('-s', '--set', '设置设备参数') do
       # 这个部分就是使用这个Option后执行的代码
       options[:switch] = true
-      set_devices(ip_strategy_hash)
+      set_flag = true
     end
 
     # 运行状态为轮训设备的状态参数
     opts.on('-g', '--get', Array, '获取设备信息') do |value|
       options[:array] = value
-      get_info(ip_strategy_hash)
+      get_flag = true
     end
   end.parse!
+
+  p ip_strategy_hash
+
+  if set_flag
+    set_devices_mt(ip_strategy_hash)
+  end
+
+  if get_flag
+    ip_info_hash = get_info_mt(ip_strategy_hash)
+    #p ip_info_hash
+    store_result(ip_info_hash)
+  end
+
 end
