@@ -183,6 +183,22 @@ def store_result(ip_info_hash)
 end
 
 
+# 当设置设备信息时，提醒用户
+def set_prompt(ip_strategy_hash)
+  continue_flag = true
+
+  prompt_column = %w[gateway web_port primary_dns secondary_dns]
+
+  if ip_strategy_hash
+    ip_strategy_hash.each {
+      |ip,v|
+    }
+  end
+
+  return continue_flag
+end
+
+
 def set_devices_mt(ip_strategy_hash)
   p '设置设备参数'
 
@@ -190,8 +206,12 @@ def set_devices_mt(ip_strategy_hash)
     return -1
   end
 
+  if !set_prompt(ip_strategy_hash)
+    return -2
+  end
+
   data_template = 'JMIP=%ip&JMSK=%mask&JGTW=%gateway&WPRT=%web_port&PDNS=%primary_dns&SDNS=%secondary_dns&MPRT=%ports
-                  &MURL=server_addresses&USPA=userpass&update=Update%2FRestart'
+                  &MURL=%server_addresses&USPA=%userpass&update=Update%2FRestart'
   key_re_hash = {
       'ip' => /%ip/,
       'mask' => /%mask/,
@@ -205,18 +225,16 @@ def set_devices_mt(ip_strategy_hash)
   }
 
   # Test code here
-  f = File.open('../Configuration.htm','r')
-  res = f.read()
-  f.close()
+  #f = File.open('../Configuration.htm','r')
+  #res = f.read()
+  #f.close()
 
-  max_thread_num = 5
+  max_thread_num = 200
 
   psr = Parser.new()
   ip_array = ip_strategy_hash.keys
 
   i = 0
-
-  parsed_result = psr.parse_nokogiri(res)
 
   m = Mutex.new
   while i < max_thread_num
@@ -242,13 +260,13 @@ def set_devices_mt(ip_strategy_hash)
           data = data_template
           set_hash = ip_strategy_hash[ip]['set']
 
-          #parsed_result = psr.parse_nokogiri(res)
+          url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']
+          res = psr.get_data_uri(url)
+          parsed_result = psr.parse_nokogiri(res)
 
-          #p parsed_result
-          p 'set_hash:'
-          p set_hash
-          p 'parsed_result:'
-          p parsed_result
+          if !parsed_result
+            next
+          end
 
           begin
             parsed_result.each{
@@ -259,11 +277,18 @@ def set_devices_mt(ip_strategy_hash)
               end
 
               if ((set_hash.has_key?k) && (key_re_hash.has_key?k))
-                p 1
-                data = data.sub(key_re_hash[k],set_hash[k])
+                if k == 'userpass'
+                  # ip=a.b.c.d
+                  c = ip.split(/\./)[2]
+                  d = ip.split(/\./)[3]
+                  value = set_hash[k].gsub(/%A/,c).gsub(/%B/,d)
+                  data = data.sub(key_re_hash[k],value)
+                else
+                  data = data.sub(key_re_hash[k],set_hash[k])
+                end
+
                 #p data
               elsif (!(set_hash.has_key?k) && (key_re_hash.has_key?k))
-                p 2
                 data = data.sub(key_re_hash[k],v)
                 #p data
               end
@@ -282,8 +307,10 @@ def set_devices_mt(ip_strategy_hash)
           url = 'http:'+ip+':'+ip_strategy_hash[ip]['port']+'/'+'Upload_Data'
 
           cmd = 'curl -d "'+data+'" '+'"'+url+'"'
-          #system(cmd)
+
           p cmd
+          #system(cmd)
+
 
           m.synchronize{
             ip = ip_array[0]
@@ -307,7 +334,7 @@ def get_info_mt(ip_strategy_hash)
 
   ip_info_hash = {}
 
-  max_thread_num = 5
+  max_thread_num = 200
   ip_num = ip_strategy_hash.length
 
   thread_num = max_thread_num
@@ -390,8 +417,6 @@ if __FILE__ ==  $0
     # Option 作为switch，不带argument，用于将switch设置成true或false
     options[:switch] = false
 
-
-
     # 指定配置文件
     opts.on('-c NAME', '--config Name', '策略文件') do |value|
       options[:name] = value
@@ -428,4 +453,7 @@ if __FILE__ ==  $0
     store_result(ip_info_hash)
   end
 
+  while Thread.list.size != 1 #只剩下一个main线程? 否则等待
+    sleep 0.2
+  end
 end

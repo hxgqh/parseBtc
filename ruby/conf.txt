@@ -4,8 +4,6 @@
 
 #  第一个策略
 [strategy]
-# interval为采集数据的间隔，必须设定
-interval = 600
 # port为http运行的端口号（即当前的web_port），必须设定
 port = 8000
 # ip_list为ip列表，必须设定。
@@ -18,12 +16,11 @@ primary_dns = 8.8.8.8
 secondary_dns 4.4.4.4
 ports = 8433,8443
 server_addresses = 10.1.2.1,10.1.2.2
-userpass = Testminer.%A%B:123,Testminer.%A%B&":123'
+userpass = Testminer.%A%B:123,Testminer.%A%B:123'
 
 
 # 第二个策略
 [strategy]
-interval = 600
 ip_list = 192.168.2.1-2
 port = 8000
 [set]
@@ -33,4 +30,4 @@ primary_dns = 8.8.8.8
 secondary_dns 4.4.4.4
 ports = 8433,8443
 server_addresses = 10.1.2.1,10.1.2.2
-userpass = Testminer.%A%B:123,Testminer.%A%B&":123'
+userpass = Testminer.%A%B:123,Testminer.%A%B:123'
