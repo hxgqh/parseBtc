@@ -1,9 +1,9 @@
-require 'rubygems'
-require 'watir'
+#require 'rubygems'
+#require 'watir'
 require 'net/http'
-require 'json'
+#require 'json'
 require 'nokogiri'
-require 'Hpricot'
+#require 'Hpricot'
 
 class Parser
   # This class is written by hxgqh@126.com
